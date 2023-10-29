@@ -1,4 +1,4 @@
-module github.com/josiahdenton/store
+module github.com/josiahdenton/bookmark
 
 go 1.21.3
 
