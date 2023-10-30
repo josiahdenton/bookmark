@@ -6,6 +6,7 @@ import (
 	"github.com/josiahdenton/bookmark/storage/jsonified"
 	flag "github.com/spf13/pflag"
 	"log"
+	"os"
 )
 
 func main() {
@@ -27,7 +28,13 @@ func main() {
 		log.Fatalln("improper usage")
 	}
 
-	storage := jsonified.New()
+	path, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("failed to get user home dir: %v", err)
+	}
+	path += "/bookmarks.json"
+
+	storage := jsonified.New(path)
 	action := bookmark.NewAction(storage)
 	fmt.Println(action)
 
