@@ -13,7 +13,7 @@ type Repository interface {
 	// Find returns a Bookmark or an error
 	Find(alias string) (Bookmark, error)
 	// Delete returns true if successfully deleted, else error
-	Delete(alias string) (bool, error)
+	Delete(alias string) error
 }
 
 type Action struct {
@@ -34,6 +34,7 @@ func NewAction(repository Repository) *Action {
 
 func (action *Action) Save(bookmark Bookmark) *Action {
 	if err := action.repository.Save(bookmark); err != nil {
+		log.Fatalf("failed to save because %v", err)
 		action.err = fmt.Errorf("failed to save bookmark: %w", err)
 		return action
 	}
@@ -51,7 +52,7 @@ func (action *Action) Find(alias string) *Action {
 }
 
 func (action *Action) Delete(alias string) *Action {
-	_, err := action.repository.Delete(alias)
+	err := action.repository.Delete(alias)
 	if err != nil {
 		action.err = err
 		return action
@@ -72,6 +73,13 @@ func (action *Action) And() *Action {
 		log.Fatalf("failed to run next action, previous failed with err %v\n", action.err)
 	}
 	return action
+}
+
+// Must will panic if the previous action failed
+func (action *Action) Must() {
+	if action.err != nil {
+		log.Fatalf("pervious action failed with reason: %v", action.err)
+	}
 }
 
 func openLink(url string) bool {
