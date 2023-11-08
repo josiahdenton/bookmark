@@ -34,7 +34,6 @@ func NewAction(repository Repository) *Action {
 
 func (action *Action) Save(bookmark Bookmark) *Action {
 	if err := action.repository.Save(bookmark); err != nil {
-		log.Fatalf("failed to save because %v", err)
 		action.err = fmt.Errorf("failed to save bookmark: %w", err)
 		return action
 	}

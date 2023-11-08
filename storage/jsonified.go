@@ -19,11 +19,13 @@ func NewJson(path string) JsonStorage {
 }
 
 func (store *JsonStorage) Connect() error {
-	//fp, err := os.Open(storage.path)
 	content, err := os.ReadFile(store.path)
 	if errors.Is(err, os.ErrNotExist) {
-		log.Printf("%v", err)
-		content = retryRead(store.path)
+		log.Printf("creating w%v", err)
+		fp, err := os.Create(store.path)
+		if err != nil {
+			log.Fatalf("failed to create a new file: %v", err)
+		}
 	} else if err != nil {
 		log.Fatalf("failed to open a file: %v", err)
 	}
@@ -36,24 +38,6 @@ func (store *JsonStorage) Connect() error {
 	store.ready = true
 
 	return nil
-}
-
-// TODO on fail to find file, this func needs to write "{}"
-func retryRead(path string) []byte {
-	fp, err := os.Create(path)
-	if err != nil {
-		log.Fatalf("failed to create a new file: %v", err)
-	}
-	err = fp.Close()
-	if err != nil {
-		log.Fatalf("failed to close created file: %v", err)
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatalf("failed to read: %v", err)
-	}
-
-	return content
 }
 
 func (store *JsonStorage) Save(bookmark bookmark.Bookmark) error {
