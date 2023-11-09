@@ -111,3 +111,7 @@ func (store *JsonStorage) Delete(alias string) error {
 
 	return nil
 }
+
+func (store *JsonStorage) All() []bookmarks.Bookmark {
+    return store.bookmarks.Active
+}

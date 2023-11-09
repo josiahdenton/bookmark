@@ -30,7 +30,6 @@ func main() {
 
 	arguments := flag.Args()
 
-	fmt.Println(arguments)
 
 	if (*add && *remove) || (*add && *all) || (*remove && *all) {
 		log.Fatalln("improper usage")
@@ -53,11 +52,10 @@ func main() {
 		log.Fatalf("failed to connect to storage: %v", err)
 	}
 	action := bookmarks.NewAction(&store)
-	fmt.Println(action)
 
 	switch {
 	case *add:
-        mustHaveLength(arguments, 2)
+		mustHaveLength(arguments, 2)
 		action.Save(bookmarks.Bookmark{
 			Alias: arguments[0],
 			Url:   arguments[1],
@@ -67,14 +65,20 @@ func main() {
 	case *remove:
 		fmt.Println("unsupported command")
 		break
+	case *all:
+		bookmarks := action.All()
+		for _, bookmark := range bookmarks {
+			fmt.Println(bookmark)
+		}
+		break
 	default:
-        mustHaveLength(arguments, 1)
-        action.Find(arguments[0]).And().Open()
+		mustHaveLength(arguments, 1)
+		action.Find(arguments[0]).And().Open()
 	}
 }
 
 func mustHaveLength(args []string, n int) {
 	if len(args) < n {
-        log.Fatalln("not enough arguments")
+		log.Fatalln("not enough arguments")
 	}
 }

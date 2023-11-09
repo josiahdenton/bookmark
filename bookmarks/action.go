@@ -14,6 +14,8 @@ type Repository interface {
 	Find(alias string) (Bookmark, error)
 	// Delete returns true if successfully deleted, else error
 	Delete(alias string) error
+    // All will return all bookmarks
+    All() []Bookmark
 }
 
 type Action struct {
@@ -46,7 +48,6 @@ func (action *Action) Find(alias string) *Action {
 		action.err = err
 		return action
 	}
-    fmt.Printf("found bookmark %s", bookmark)
 	action.activeBookmark = bookmark
 	return action
 }
@@ -73,6 +74,10 @@ func (action *Action) And() *Action {
 		log.Fatalf("failed to run next action, previous failed with err %v\n", action.err)
 	}
 	return action
+}
+
+func (action *Action) All() []Bookmark {
+    return action.repository.All()
 }
 
 // Must will panic if the previous action failed

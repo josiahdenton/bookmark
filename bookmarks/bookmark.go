@@ -19,5 +19,5 @@ func New() Bookmarks {
 }
 
 func (b Bookmark) String() string {
-    return fmt.Sprintf("alias: %s, url: %s", b.Alias, b.Url)
+    return fmt.Sprintf("%s\t%s", b.Alias, b.Url)
 }
