@@ -1,4 +1,4 @@
-package bookmark
+package bookmarks
 
 import (
 	"fmt"
@@ -18,12 +18,12 @@ type Repository interface {
 
 type Action struct {
 	repository     Repository
-	activeBookmark Bookmark // should result always be a bookmark?
+	activeBookmark Bookmark
 	err            error
 }
 
 func (action *Action) String() string {
-	return fmt.Sprintln("action!")
+    return fmt.Sprintf("activeBookmark: %s, err: %v", action.activeBookmark.Alias, action.err)
 }
 
 func NewAction(repository Repository) *Action {
@@ -46,6 +46,7 @@ func (action *Action) Find(alias string) *Action {
 		action.err = err
 		return action
 	}
+    fmt.Printf("found bookmark %s", bookmark)
 	action.activeBookmark = bookmark
 	return action
 }

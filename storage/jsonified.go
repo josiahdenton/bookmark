@@ -3,49 +3,67 @@ package storage
 import (
 	"encoding/json"
 	"errors"
-	"github.com/josiahdenton/bookmark/bookmark"
+	"fmt"
 	"log"
 	"os"
+
+	"github.com/josiahdenton/bookmark/bookmarks"
 )
 
 type JsonStorage struct {
-	path    string
-	aliases map[string]string
-	ready   bool
+	path      string
+	bookmarks bookmarks.Bookmarks
+	ready     bool
 }
 
-func NewJson(path string) JsonStorage {
-	return JsonStorage{path, make(map[string]string), false}
+func New(path string) JsonStorage {
+	return JsonStorage{path, bookmarks.Bookmarks{}, false}
 }
 
 func (store *JsonStorage) Connect() error {
 	content, err := os.ReadFile(store.path)
 	if errors.Is(err, os.ErrNotExist) {
-		log.Printf("creating w%v", err)
-		fp, err := os.Create(store.path)
-		if err != nil {
-			log.Fatalf("failed to create a new file: %v", err)
-		}
+		log.Printf("file does not exist: %v", err)
+		setupEmptyStorageFile(store.path)
 	} else if err != nil {
-		log.Fatalf("failed to open a file: %v", err)
+        return fmt.Errorf("failed to open storage file: %w", err)
 	}
 
-	var aliases map[string]string
-	err = json.Unmarshal(content, &aliases)
+
+    var bookmarks bookmarks.Bookmarks
+	err = json.Unmarshal(content, &bookmarks)
 	if err != nil {
-		log.Fatalf("failed to parse storage file: %v", err)
+        return fmt.Errorf("failed to parse storage file: %w", err)
 	}
-	store.ready = true
 
+	store.ready = true
+    store.bookmarks = bookmarks
 	return nil
 }
 
-func (store *JsonStorage) Save(bookmark bookmark.Bookmark) error {
+func setupEmptyStorageFile(path string) {
+	log.Println("creating new storage file")
+	fp, err := os.Create(path)
+    defer fp.Close()
+	if err != nil {
+		log.Fatalf("failed to create a new file: %v", err)
+	}
+
+	empty := bookmarks.New()
+	bytes, err := json.Marshal(empty)
+
+	_, err = fp.Write(bytes)
+	if err != nil {
+		log.Fatalf("failed to write empty store file: %v", err)
+	}
+	log.Println("successfully created new store file, please retry previous command")
+}
+
+func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
 	if !store.ready {
 		return ConnectionErr
 	}
-
-	store.aliases[bookmark.Alias] = bookmark.Url
+	store.bookmarks.Active = append(store.bookmarks.Active, bookmark)
 	err := store.write()
 	if err != nil {
 		log.Fatalf("failed to save changes: %v", err)
@@ -55,9 +73,9 @@ func (store *JsonStorage) Save(bookmark bookmark.Bookmark) error {
 }
 
 func (store *JsonStorage) write() error {
-	bytes, err := json.Marshal(store.aliases)
+	bytes, err := json.Marshal(store.bookmarks)
 	if err != nil {
-		log.Fatalf("faild to marshal alias map: %v", err)
+		log.Fatalf("faild to marshal bookmarks: %v", err)
 	}
 	err = os.WriteFile(store.path, bytes, 0666)
 	if err != nil {
@@ -67,18 +85,29 @@ func (store *JsonStorage) write() error {
 	return nil
 }
 
-func (store *JsonStorage) Find(alias string) (bookmark.Bookmark, error) {
-	if url, ok := store.aliases[alias]; !ok {
-		return bookmark.Bookmark{}, errors.New("no bookmark found")
-	} else {
-		return bookmark.Bookmark{Alias: alias, Url: url}, nil
+func (store *JsonStorage) Find(alias string) (bookmarks.Bookmark, error) {
+	for _, bookmark := range store.bookmarks.Active {
+		if bookmark.Alias == alias {
+			return bookmark, nil
+		}
 	}
+	return bookmarks.Bookmark{}, errors.New("no bookmark found")
 }
 
 func (store *JsonStorage) Delete(alias string) error {
-	if _, exists := store.aliases[alias]; !exists {
-		return errors.New("alias does not exist")
+	if len(store.bookmarks.Active) == 0 {
+		return errors.New("no active bookmarks to delete")
 	}
-	delete(store.aliases, alias)
+
+	for current, bookmark := range store.bookmarks.Active {
+		if bookmark.Alias == alias {
+			last := len(store.bookmarks.Active) - 1
+			// replace the current bookmark with the last then drop the last elem in the array
+			// O(1) delete
+			store.bookmarks.Active[current] = store.bookmarks.Active[last]
+			store.bookmarks.Active = store.bookmarks.Active[:last]
+		}
+	}
+
 	return nil
 }
