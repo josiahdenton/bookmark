@@ -24,29 +24,31 @@ func (store *JsonStorage) Connect() error {
 	content, err := os.ReadFile(store.path)
 	if errors.Is(err, os.ErrNotExist) {
 		log.Printf("file does not exist: %v", err)
-		setupEmptyStorageFile(store.path)
+		err = setupEmptyStorageFile(store.path)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
-        return fmt.Errorf("failed to open storage file: %w", err)
+		return fmt.Errorf("failed to open storage file: %w", err)
 	}
 
-
-    var bookmarks bookmarks.Bookmarks
+	var bookmarks bookmarks.Bookmarks
 	err = json.Unmarshal(content, &bookmarks)
 	if err != nil {
-        return fmt.Errorf("failed to parse storage file: %w", err)
+		return fmt.Errorf("failed to parse storage file: %w", err)
 	}
 
 	store.ready = true
-    store.bookmarks = bookmarks
+	store.bookmarks = bookmarks
 	return nil
 }
 
-func setupEmptyStorageFile(path string) {
+func setupEmptyStorageFile(path string) error {
 	log.Println("creating new storage file")
 	fp, err := os.Create(path)
-    defer fp.Close()
+	defer fp.Close()
 	if err != nil {
-		log.Fatalf("failed to create a new file: %v", err)
+		return fmt.Errorf("failed to create a new file: %v", err)
 	}
 
 	empty := bookmarks.New()
@@ -54,19 +56,25 @@ func setupEmptyStorageFile(path string) {
 
 	_, err = fp.Write(bytes)
 	if err != nil {
-		log.Fatalf("failed to write empty store file: %v", err)
+		return fmt.Errorf("failed to write empty store file: %v", err)
 	}
 	log.Println("successfully created new store file, please retry previous command")
+	return nil
 }
 
 func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
 	if !store.ready {
 		return ConnectionErr
 	}
+	for _, bookmark := range store.bookmarks.Active {
+		if bookmark == bookmark {
+			return errors.New("duplicate bookmark id")
+		}
+	}
 	store.bookmarks.Active = append(store.bookmarks.Active, bookmark)
 	err := store.write()
 	if err != nil {
-		log.Fatalf("failed to save changes: %v", err)
+		return fmt.Errorf("failed to save changes: %v", err)
 	}
 
 	return nil
@@ -75,11 +83,11 @@ func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
 func (store *JsonStorage) write() error {
 	bytes, err := json.Marshal(store.bookmarks)
 	if err != nil {
-		log.Fatalf("faild to marshal bookmarks: %v", err)
+		return fmt.Errorf("failed to marshal bookmarks: %v", err)
 	}
 	err = os.WriteFile(store.path, bytes, 0666)
 	if err != nil {
-		log.Fatalf("failed so save alias map to file: %v", err)
+		return fmt.Errorf("failed so save alias map to file: %v", err)
 	}
 
 	return nil
@@ -102,7 +110,8 @@ func (store *JsonStorage) Delete(alias string) error {
 	for current, bookmark := range store.bookmarks.Active {
 		if bookmark.Alias == alias {
 			last := len(store.bookmarks.Active) - 1
-			// replace the current bookmark with the last then drop the last elem in the array
+			// replace the current bookmark with the last
+			// then drop the last elem in the array
 			// O(1) delete
 			store.bookmarks.Active[current] = store.bookmarks.Active[last]
 			store.bookmarks.Active = store.bookmarks.Active[:last]
@@ -113,5 +122,5 @@ func (store *JsonStorage) Delete(alias string) error {
 }
 
 func (store *JsonStorage) All() []bookmarks.Bookmark {
-    return store.bookmarks.Active
+	return store.bookmarks.Active
 }

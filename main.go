@@ -30,7 +30,6 @@ func main() {
 
 	arguments := flag.Args()
 
-
 	if (*add && *remove) || (*add && *all) || (*remove && *all) {
 		log.Fatalln("improper usage")
 	}
@@ -59,11 +58,12 @@ func main() {
 		action.Save(bookmarks.Bookmark{
 			Alias: arguments[0],
 			Url:   arguments[1],
-		})
+		}).Must()
 		fmt.Println("Successfully saved bookmark")
 		break
 	case *remove:
-		fmt.Println("unsupported command")
+		mustHaveLength(arguments, 1)
+		action.Delete(arguments[0]).Must()
 		break
 	case *all:
 		bookmarks := action.All()
