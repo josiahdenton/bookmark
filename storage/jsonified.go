@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/josiahdenton/bookmark/bookmarks"
+	"golang.org/x/exp/slices"
 )
 
 type JsonStorage struct {
@@ -66,8 +67,8 @@ func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
 	if !store.ready {
 		return ConnectionErr
 	}
-	for _, bookmark := range store.bookmarks.Active {
-		if bookmark == bookmark {
+	for _, val := range store.bookmarks.Active {
+		if val == bookmark {
 			return errors.New("duplicate bookmark id")
 		}
 	}
@@ -109,12 +110,7 @@ func (store *JsonStorage) Delete(alias string) error {
 
 	for current, bookmark := range store.bookmarks.Active {
 		if bookmark.Alias == alias {
-			last := len(store.bookmarks.Active) - 1
-			// replace the current bookmark with the last
-			// then drop the last elem in the array
-			// O(1) delete
-			store.bookmarks.Active[current] = store.bookmarks.Active[last]
-			store.bookmarks.Active = store.bookmarks.Active[:last]
+			slices.Delete(store.bookmarks.Active, current, current+1)
 		}
 	}
 
