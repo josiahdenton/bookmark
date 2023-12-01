@@ -28,7 +28,7 @@ guides --delete "my bookmark"
 an easy way to incorporate fuzzy search is via another alias, such as
 
 ```bash 
-alias search="bookmark --path ~/bookmarks/saved.json $(bookmark --path ~/bookmarks/saved.json --all | fzf | cut -f 1)"
+alias search="bookmark --path ~/bookmarks/ $(bookmark --path ~/bookmarks/ --all | fzf | cut -f 1)"
 ```
 
 which will fuzzy search and open that bookmark
@@ -37,7 +37,9 @@ which will fuzzy search and open that bookmark
 ### Planned future features
 
 - [ ] link bookmarks together (graph-like)
+- [ ] improve error handling
 - [ ] tag a bookmark, filter by tag
 - [ ] edit support for saved bookmarks (replaces add -> delete -> add)
 - [ ] add global config file (yaml)
 - [ ] add option to use Sqlite instead of json (option controlled by config file)
+- [ ] v2 rewrite + add unit tests
