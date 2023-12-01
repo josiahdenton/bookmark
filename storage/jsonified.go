@@ -37,7 +37,7 @@ func (store *JsonStorage) Connect() error {
 			return fmt.Errorf("failed to setup storage file")
 		}
 		// retry if no error
-		store.Connect()
+		return store.Connect()
 	} else if err != nil {
 		return fmt.Errorf("failed to stat file")
 	}
