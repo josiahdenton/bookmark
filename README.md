@@ -2,6 +2,11 @@
 
 store aliased links to improve taking notes
 
+### suggested workflow
+
+use github gists/projects/issues to take notes, use this tool for search with the
+ability to open a bookmark from the terminal.
+
 ### usage
 
 I like to add aliases to each `*.json` I use for a specific category.
@@ -28,10 +33,11 @@ alias search="bookmark --path ~/bookmarks/saved.json $(bookmark --path ~/bookmar
 
 which will fuzzy search and open that bookmark
 
-### Bugs
 
-- [ ] fix issue when file does not exist, make this a hidden error and not need an empty json file
+### Planned future features
 
-### Features
-
-- [ ] make dirs work for a path
+- [ ] link bookmarks together (graph-like)
+- [ ] tag a bookmark, filter by tag
+- [ ] edit support for saved bookmarks (replaces add -> delete -> add)
+- [ ] add global config file (yaml)
+- [ ] add option to use Sqlite instead of json (option controlled by config file)

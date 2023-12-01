@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/josiahdenton/bookmark/bookmarks"
 	"golang.org/x/exp/slices"
@@ -15,38 +18,88 @@ type JsonStorage struct {
 	path      string
 	bookmarks bookmarks.Bookmarks
 	ready     bool
+	readOnly  bool
 }
 
 func New(path string) JsonStorage {
-	return JsonStorage{path, bookmarks.Bookmarks{}, false}
+	return JsonStorage{path, bookmarks.Bookmarks{}, false, false}
 }
 
 func (store *JsonStorage) Connect() error {
-	content, err := os.ReadFile(store.path)
-	if errors.Is(err, os.ErrNotExist) {
-		log.Printf("file does not exist: %v", err)
-		err = setupEmptyStorageFile(store.path)
+	if !store.pathIsOfTypeJson() {
+		return fmt.Errorf("type of file node specified is not json or dir")
+	}
+
+	fi, err := os.Stat(store.path)
+	if os.IsNotExist(err) {
+		err = store.setupEmptyStorageFile()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to setup storage file")
 		}
+		// retry if no error
+		store.Connect()
 	} else if err != nil {
+		return fmt.Errorf("failed to stat file")
+	}
+
+	if fi.IsDir() {
+		return store.connectToDir()
+	}
+	return store.connectToFile()
+}
+
+func (store *JsonStorage) connectToFile() error {
+	content, err := os.ReadFile(store.path)
+	if err != nil {
 		return fmt.Errorf("failed to open storage file: %w", err)
 	}
 
-	var bookmarks bookmarks.Bookmarks
-	err = json.Unmarshal(content, &bookmarks)
-	if err != nil {
-		return fmt.Errorf("failed to parse storage file: %w", err)
-	}
-
+	store.bookmarks, err = store.parse(content)
 	store.ready = true
-	store.bookmarks = bookmarks
+
 	return nil
 }
 
-func setupEmptyStorageFile(path string) error {
-	log.Println("creating new storage file")
-	fp, err := os.Create(path)
+func (store *JsonStorage) connectToDir() error {
+	store.bookmarks = bookmarks.New()
+	err := filepath.WalkDir(store.path, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed to walk: %w", err)
+		}
+		split := strings.Split(d.Name(), ".")
+		fileType := split[len(split)-1]
+		// only parse json files
+		if fileType == "json" {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to open storage file: %w", err)
+			}
+			bms, err := store.parse(content)
+			if err != nil {
+				return err
+			}
+			store.bookmarks.Active = append(store.bookmarks.Active, bms.Active...)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to walk dir: %w", err)
+	}
+
+	return nil
+}
+
+func (store *JsonStorage) parse(content []byte) (bookmarks.Bookmarks, error) {
+	var bms bookmarks.Bookmarks
+	err := json.Unmarshal(content, &bms)
+	if err != nil {
+		return bookmarks.New(), fmt.Errorf("failed to parse storage file: %w", err)
+	}
+	return bms, nil
+}
+
+func (store *JsonStorage) setupEmptyStorageFile() error {
+	fp, err := os.Create(store.path)
 	defer fp.Close()
 	if err != nil {
 		return fmt.Errorf("failed to create a new file: %v", err)
@@ -59,8 +112,16 @@ func setupEmptyStorageFile(path string) error {
 	if err != nil {
 		return fmt.Errorf("failed to write empty store file: %v", err)
 	}
-	log.Println("successfully created new store file, please retry previous command")
+	log.Println("successfully created new store file")
 	return nil
+}
+
+func (store *JsonStorage) pathIsOfTypeJson() bool {
+	splits := strings.Split(store.path, ".")
+	if splits[len(splits)-1] == "json" {
+		return true
+	}
+	return false
 }
 
 func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
@@ -110,11 +171,11 @@ func (store *JsonStorage) Delete(alias string) error {
 
 	for current, bookmark := range store.bookmarks.Active {
 		if bookmark.Alias == alias {
-			slices.Delete(store.bookmarks.Active, current, current+1)
+			store.bookmarks.Active = slices.Delete(store.bookmarks.Active, current, current+1)
 		}
 	}
 
-	return nil
+	return store.write()
 }
 
 func (store *JsonStorage) All() []bookmarks.Bookmark {
