@@ -1,4 +1,4 @@
-package bookmark
+package bookmarks
 
 import (
 	"fmt"
@@ -11,15 +11,21 @@ import (
 type Repository interface {
 	Save(bookmark Bookmark) error
 	// Find returns a Bookmark or an error
-	Find() (Bookmark, error)
+	Find(alias string) (Bookmark, error)
 	// Delete returns true if successfully deleted, else error
-	Delete() (bool, error)
+	Delete(alias string) error
+    // All will return all bookmarks
+    All() []Bookmark
 }
 
 type Action struct {
 	repository     Repository
-	activeBookmark Bookmark // should result always be a bookmark?
+	activeBookmark Bookmark
 	err            error
+}
+
+func (action *Action) String() string {
+    return fmt.Sprintf("activeBookmark: %s, err: %v", action.activeBookmark.Alias, action.err)
 }
 
 func NewAction(repository Repository) *Action {
@@ -36,8 +42,8 @@ func (action *Action) Save(bookmark Bookmark) *Action {
 	return action
 }
 
-func (action *Action) Find() *Action {
-	bookmark, err := action.repository.Find()
+func (action *Action) Find(alias string) *Action {
+	bookmark, err := action.repository.Find(alias)
 	if err != nil {
 		action.err = err
 		return action
@@ -46,8 +52,8 @@ func (action *Action) Find() *Action {
 	return action
 }
 
-func (action *Action) Delete() *Action {
-	_, err := action.repository.Delete()
+func (action *Action) Delete(alias string) *Action {
+	err := action.repository.Delete(alias)
 	if err != nil {
 		action.err = err
 		return action
@@ -68,6 +74,17 @@ func (action *Action) And() *Action {
 		log.Fatalf("failed to run next action, previous failed with err %v\n", action.err)
 	}
 	return action
+}
+
+func (action *Action) All() []Bookmark {
+    return action.repository.All()
+}
+
+// Must will panic if the previous action failed
+func (action *Action) Must() {
+	if action.err != nil {
+		log.Fatalf("pervious action failed with reason: %v", action.err)
+	}
 }
 
 func openLink(url string) bool {
