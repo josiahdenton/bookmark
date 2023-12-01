@@ -128,6 +128,10 @@ func (store *JsonStorage) Save(bookmark bookmarks.Bookmark) error {
 	if !store.ready {
 		return ConnectionErr
 	}
+	if store.readOnly {
+		return fmt.Errorf("cannot modify with dir path")
+	}
+
 	for _, val := range store.bookmarks.Active {
 		if val == bookmark {
 			return errors.New("duplicate bookmark id")
@@ -165,6 +169,9 @@ func (store *JsonStorage) Find(alias string) (bookmarks.Bookmark, error) {
 }
 
 func (store *JsonStorage) Delete(alias string) error {
+	if store.readOnly {
+		return fmt.Errorf("cannot modify with dir path")
+	}
 	if len(store.bookmarks.Active) == 0 {
 		return errors.New("no active bookmarks to delete")
 	}

@@ -37,7 +37,9 @@ which will fuzzy search and open that bookmark
 ### Planned future features
 
 - [ ] link bookmarks together (graph-like)
+- [ ] improve error handling
 - [ ] tag a bookmark, filter by tag
 - [ ] edit support for saved bookmarks (replaces add -> delete -> add)
 - [ ] add global config file (yaml)
 - [ ] add option to use Sqlite instead of json (option controlled by config file)
+- [ ] v2 rewrite + add unit tests
